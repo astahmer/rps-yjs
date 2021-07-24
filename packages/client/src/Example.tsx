@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import * as Y from "yjs";
 import { useYDoc, useYArray, useYMap, StartAwarenessFunction, useYAwareness } from "zustand-yjs";
 import { WebsocketProvider } from "y-websocket";
-import { Box } from "@chakra-ui/react";
+import { Box, useEventListener } from "@chakra-ui/react";
 import { AnyFunction } from "xstate/lib/model.types";
+import { useRef } from "react";
 
 // Taken from https://github.com/tandem-pt/zustand-yjs/blob/d5405321163a94496226208382ef949afd4b1621/example/src/App.tsx
 // Added live cursors through awareness
@@ -25,7 +26,11 @@ type AwarenessState = {
     color: string;
     elementIndex: number | null;
     position: { x: number; y: number } | null;
+    windowSize: { innerWidth: number; innerHeight: number } | null;
 };
+
+const getWindowSize = () => ({ innerWidth: window.innerWidth, innerHeight: window.innerHeight });
+
 const connectMembers = (yDoc: Y.Doc, startAwareness: StartAwarenessFunction) => {
     console.log("connect ", yDoc.guid);
     const provider = new WebsocketProvider(wsUrl, yDoc.guid, yDoc);
@@ -35,15 +40,16 @@ const connectMembers = (yDoc: Y.Doc, startAwareness: StartAwarenessFunction) => 
         elementIndex: null,
         position: null,
     });
-    const updatePosition = (e: MouseEvent) => {
-        console.log("updatePosition");
-        provider.awareness.setLocalState({
-            ...provider.awareness.getLocalState(),
-            position: { x: e.pageX, y: e.pageY },
-        });
-    };
+    const updatePosition = (e: MouseEvent) =>
+        provider.awareness.setLocalStateField("position", { x: e.clientX, y: e.clientY });
     const moveHandler = throttle((e) => updatePosition(e), 150) as AnyFunction;
-    document.addEventListener("mousemove", moveHandler);
+    window.addEventListener("mousemove", moveHandler);
+
+    const updateSize = () => provider.awareness.setLocalStateField("windowSize", getWindowSize());
+    const sizeHandler = throttle((e) => updateSize(e), 150) as AnyFunction;
+    window.addEventListener("resize", sizeHandler);
+    updateSize();
+
     const stopAwareness = startAwareness(provider);
     return () => {
         console.log("disconnect", yDoc.guid);
@@ -198,21 +204,47 @@ const Members = () => {
                     <em>Click on the member you want to edit</em>
                 </small>
             )}
-            {awarenessData.map((awareness) => {
-                return (
-                    <Box
-                        key={awareness.ID}
-                        pos="absolute"
-                        boxSize="10px"
-                        left={awareness.position?.x}
-                        top={awareness.position?.y}
-                        bgColor={awareness.color}
-                        transition="all 0.3s ease-out"
-                    ></Box>
-                );
-            })}
+            {awarenessData
+                .filter((presence) => presence.ID !== ID)
+                .map((presence) => {
+                    const selfSize = getWindowSize();
+                    const aSize = presence.windowSize;
+                    const percents = {
+                        innerWidth: selfSize.innerWidth / aSize.innerWidth,
+                        innerHeight: selfSize.innerHeight / aSize.innerHeight,
+                    };
+                    const cursorPosition = {
+                        left: (presence.position?.x || 0) * percents.innerWidth,
+                        top: (presence.position?.y || 0) * percents.innerHeight,
+                    };
+                    return (
+                        <Cursor
+                            key={presence.ID}
+                            left={cursorPosition.left}
+                            top={cursorPosition.top}
+                            color={presence.color}
+                        />
+                    );
+                })}
+            {/* <SelfCursor /> */}
         </>
     );
+};
+
+const Cursor = ({ left, top, color }) => {
+    return <Box pos="absolute" boxSize="10px" left={left} top={top} bgColor={color} transition="all 0.3s ease-out" />;
+};
+
+const SelfCursor = () => {
+    const ref = useRef<HTMLDivElement>(null);
+    useEventListener("mousemove", (e) => {
+        if (!ref.current) return;
+        ref.current.style.left = e.clientX + "px";
+        ref.current.style.top = e.clientY + "px";
+        console.log([e.clientX, e.clientY]);
+    });
+
+    return <Box ref={ref} pos="absolute" boxSize="10px" bgColor="twitter.500" />;
 };
 
 const AddMember = () => {
@@ -309,3 +341,8 @@ function throttle(callback, wait, immediate = false) {
         }
     };
 }
+
+// https://github.com/yjs/y-prosemirror/blob/master/src/plugins/cursor-plugin.js
+// https://svelt-yjs.dev/ https://github.com/relm-us/svelt-yjs/blob/main/example/src/App.svelte
+// https://github.com/yjs/y-websocket/blob/master/README.md
+// https://docs.yjs.dev/getting-started/adding-awareness
