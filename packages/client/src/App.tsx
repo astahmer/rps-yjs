@@ -3,6 +3,7 @@ import "./App.css";
 import { Example } from "./pages/Example";
 import { RPS } from "./pages/RPS";
 import { BrowserRouter, Route, Switch } from "react-router-dom";
+import { Test } from "./pages/Test";
 
 const theme = extendTheme({ config: { initialColorMode: "light" } });
 
@@ -17,6 +18,7 @@ function App() {
                     <Center p={[0, "8"]} pt="0" h="100%">
                         <Switch>
                             <Route path="/example" children={<Example />} />
+                            <Route path="/test" children={<Test />} />
                             <Route path="/" children={<RPS />} />
                         </Switch>
                     </Center>

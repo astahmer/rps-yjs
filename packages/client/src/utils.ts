@@ -1,3 +1,19 @@
+import { findBy, getRandomIntIn } from "@pastable/core";
+import { nanoid } from "nanoid";
+import { Game, Player } from "./types";
+
+export const makeId = () => nanoid(12);
+export const makeUsername = () => nanoid(getRandomIntIn(4, 10));
+export const makePlayer = (): Player => ({
+    id: makeId(),
+    username: makeUsername(),
+    elo: getRandomIntIn(0, 2200),
+});
+export const makeGame = (): Game => ({ id: makeId(), players: [makePlayer()], mode: "duel" });
+export const getRandomColor = () => rainbow(getRandomIntIn(100) % 999);
+export const removeItemObjectMutate = <T>(array: T[], idPath: string, value: T): T[] =>
+    array.splice(findBy(array, idPath, value, true) as number, 1);
+
 export function rainbow(step: number, numOfSteps = 1000) {
     // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
     // Adam Cole, 2011-Sept-14
