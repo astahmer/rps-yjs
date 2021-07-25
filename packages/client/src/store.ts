@@ -1,5 +1,5 @@
 import { makePlayer } from "@/utils";
-import { SetState } from "@pastable/core";
+import { SetState, stringify } from "@pastable/core";
 import { atom, useAtom } from "jotai";
 import { useAtomValue, useUpdateAtom } from "jotai/utils";
 import { atomWithProxy } from "jotai/valtio";
@@ -15,7 +15,16 @@ const wsUrl = "ws://localhost:1338";
 const yDocOptions = { guid: yDocId };
 const appYDoc = new Y.Doc(yDocOptions);
 const provider = new WebsocketProvider(wsUrl, appYDoc.guid, appYDoc, { connect: false });
-const player = makePlayer();
+
+const getPlayer = () => {
+    const player = localStorage.getItem("rps/player");
+    return player ? JSON.parse(player) : makePlayer();
+};
+const player = getPlayer();
+const setLocalState = (awareness: WebsocketProvider["awareness"], player: Player) => {
+    awareness.setLocalState(player);
+    localStorage.setItem("rps/player", stringify(player));
+};
 
 export const appStateAtom = atom({ yDoc: appYDoc, provider });
 export const appYDocAtom = atom((get) => get(appStateAtom).yDoc);
@@ -24,7 +33,7 @@ export const appYWsProvider = atom((get) => get(appStateAtom).provider);
 export const addWsProviderToDoc: UseYDocProviderMountFn = (yDoc) => {
     console.log("connect to a provider with room", yDoc.guid);
     provider.connect();
-    provider.awareness.setLocalState(player);
+    setLocalState(provider.awareness, player);
 
     return () => {
         console.log("disconnect", yDoc.guid);
@@ -32,6 +41,7 @@ export const addWsProviderToDoc: UseYDocProviderMountFn = (yDoc) => {
     };
 };
 export const useAppYDocInit = () => useYDocInit(appYDocAtom, addWsProviderToDoc);
+export const useAppYDoc = () => useAtomValue(appYDocAtom);
 
 export const appAwarenessAtom = atom(new Map() as ReturnType<WebsocketProvider["awareness"]["getStates"]>);
 export const appLocalAwarenessAtom = atom((get) => get(appAwarenessAtom).get(provider.awareness.clientID) as Player);
@@ -41,7 +51,7 @@ export const useAppYAwarenessInit = () => {
 
     useEffect(() => {
         provider.awareness.on("update", (...args) => {
-            console.log("update", ...args);
+            // console.log("update", ...args);
             setAwareness(provider.awareness.getStates());
         });
 
@@ -56,7 +66,7 @@ export const usePresence = () => {
     const [presence, setPresence] = useAtom(presenceAtom);
     const setAwareness: SetState<Player> = (state) => {
         const update = typeof state === "function" ? state(presence) : state;
-        provider.awareness.setLocalState(update);
+        setLocalState(provider.awareness, update);
         setPresence(update);
     };
 
