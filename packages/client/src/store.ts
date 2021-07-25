@@ -52,13 +52,13 @@ export const useAppYAwarenessInit = () => {
     useEffect(() => {
         provider.awareness.on("update", (...args) => {
             // console.log("update", ...args);
-            setAwareness(provider.awareness.getStates());
+            setAwareness(new Map(provider.awareness.getStates()));
         });
 
         return () => provider.awareness.destroy();
     }, []);
 };
-export const useAppYAwareness = () => useAtomValue(appAwarenessAtom);
+export const useAppYAwareness = () => useAtomValue(appAwarenessAtom) as Map<number, Player>;
 
 const presenceProxy = proxy(player);
 const presenceAtom = atomWithProxy(presenceProxy);

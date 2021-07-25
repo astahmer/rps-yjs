@@ -1,4 +1,4 @@
-import { findBy, getRandomIntIn } from "@pastable/core";
+import { getNextIndex, getNextItem, getRandomIntIn, pickOne } from "@pastable/core";
 import { nanoid } from "nanoid";
 import { Game, Player } from "./types";
 
@@ -11,9 +11,24 @@ export const makePlayer = (): Player => ({
     color: getRandomColor(),
 });
 export const makeGame = (initialPlayer: Player): Game => ({ id: makeId(), players: [initialPlayer], mode: "duel" });
-export const getRandomColor = () => rainbow(getRandomIntIn(100) % 999);
-export const removeItemObjectMutate = <T>(array: T[], idPath: string, value: T): T[] =>
-    array.splice(findBy(array, idPath, value, true) as number, 1);
+
+const hexLetters = "0123456789ABCDEF".toLowerCase();
+const hexLettersArray = hexLetters.split("");
+
+export const getRandomColor = () =>
+    rainbow(getRandomIntIn(1000) % 999) + pickOne(hexLettersArray.slice(2, 6)) + pickOne(hexLettersArray.slice());
+
+const getNextHexChar = (char: string, step = 3) =>
+    hexLettersArray[getNextIndex(hexLetters.indexOf(char), hexLettersArray.length, false, step)];
+export const getSaturedColor = (hexColor: string) => {
+    const chars = hexColor.split("");
+    chars[5] = getNextHexChar(chars[5]);
+    chars[6] = getNextHexChar(chars[6]);
+    chars[7] = getNextHexChar(chars[7], 2);
+    chars[8] = getNextHexChar(chars[8], 2);
+
+    return chars.join("");
+};
 
 export function rainbow(step: number, numOfSteps = 1000) {
     // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.

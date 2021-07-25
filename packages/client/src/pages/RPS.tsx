@@ -1,6 +1,6 @@
 import { appYDocAtom, useAppYAwareness, useAppYAwarenessInit, useAppYDocInit, usePresence } from "@/store";
 import { Game, Player } from "@/types";
-import { makeGame, removeItemObjectMutate } from "@/utils";
+import { getRandomColor, makeGame, getSaturedColor, throttle } from "@/utils";
 import { useYArray, useYDocValue } from "@/yjs-utils";
 import {
     Box,
@@ -18,6 +18,7 @@ import {
     Spinner,
     Stack,
 } from "@chakra-ui/react";
+import { removeItemMutate } from "@pastable/core";
 import { useSnapshot } from "valtio";
 
 export const RPS = () => {
@@ -31,6 +32,9 @@ export const RPS = () => {
 
     const makeNewGame = () => gamesSource.push(makeGame(presence));
     const updateName = (username: Player["username"]) => setPresence((player) => ({ ...player, username }));
+    const updateColor = (color: Player["color"]) => setPresence((player) => ({ ...player, color }));
+    const handleUpdateColor = throttle((e) => updateColor(e.target.value), 1000);
+    const updateRandomColor = () => setPresence((player) => ({ ...player, color: getRandomColor() }));
 
     if (!presence) {
         return (
@@ -48,6 +52,8 @@ export const RPS = () => {
                         <chakra.span>Username: </chakra.span>
                         <EditableName defaultValue={presence.username} onSubmit={updateName} />
                     </Stack>
+                    <input type="color" onChange={handleUpdateColor} />
+                    <Button onClick={updateRandomColor}>Random color</Button>
                     <Button onClick={makeNewGame}>New game</Button>
                 </Stack>
             </Center>
@@ -59,22 +65,47 @@ export const RPS = () => {
                     return <DuelGameWidget key={gameId} game={gameSrc} />;
                 })}
             </SimpleGrid>
+            <PlayerList />
         </Stack>
+    );
+};
+
+const PlayerList = () => {
+    const awareness = useAppYAwareness();
+
+    return (
+        <Box pos="fixed" top="100px" right="0">
+            <Stack>
+                {Array.from(awareness.entries()).map(([id, presence]) => (
+                    <Box key={id} py="2" px="4" w="150px" bgColor={presence.color} pos="relative">
+                        <Box
+                            pos="absolute"
+                            top="0"
+                            right="100%"
+                            h="100%"
+                            w="20px"
+                            bgColor={getSaturedColor(presence.color)}
+                        />
+                        <chakra.span color="black">{presence.username}</chakra.span>
+                    </Box>
+                ))}
+            </Stack>
+        </Box>
     );
 };
 
 const DuelGameWidget = ({ game }) => {
     const gameSnap = useSnapshot<Game>(game);
     const [hostPlayer, opponentPlayer] = gameSnap.players || [];
-    // console.log(gameSnap);
 
     const yDoc = useYDocValue(appYDocAtom);
     const gamesSource = useYArray<Game>(yDoc, "games");
-    const deleteGame = () => removeItemObjectMutate(gamesSource, "id", game.id);
+    const deleteGame = () => removeItemMutate(gamesSource, "id", game.id);
     const [presence] = usePresence();
     const joinGame = () => game.players.push(presence);
     const isHost = presence.id === hostPlayer.id;
-    console.log(isHost, hostPlayer, opponentPlayer);
+    const canStart = Boolean(hostPlayer && opponentPlayer);
+    // TODO rdy button for both ? or auto-start after x
 
     return (
         <Flex bgColor="gray.400" w="100%" h="200px" p="15px" rounded={8} pos="relative">
