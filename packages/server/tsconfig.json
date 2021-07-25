@@ -21,6 +21,7 @@
         "paths": {
             "@/*": ["./src/*"]
         }
+        // "maxNodeModuleJsDepth": 5
     },
     "include": ["src", "tests"]
 }
