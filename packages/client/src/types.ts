@@ -1,8 +1,8 @@
-export type AwarenessState = { id: string; username: string; color: string };
 export interface Player {
     id: string;
     username: string;
     elo: number;
+    color: string;
 }
 export interface Game {
     id: string;

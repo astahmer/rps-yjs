@@ -8,8 +8,9 @@ export const makePlayer = (): Player => ({
     id: makeId(),
     username: makeUsername(),
     elo: getRandomIntIn(0, 2200),
+    color: getRandomColor(),
 });
-export const makeGame = (): Game => ({ id: makeId(), players: [makePlayer()], mode: "duel" });
+export const makeGame = (initialPlayer: Player): Game => ({ id: makeId(), players: [initialPlayer], mode: "duel" });
 export const getRandomColor = () => rainbow(getRandomIntIn(100) % 999);
 export const removeItemObjectMutate = <T>(array: T[], idPath: string, value: T): T[] =>
     array.splice(findBy(array, idPath, value, true) as number, 1);

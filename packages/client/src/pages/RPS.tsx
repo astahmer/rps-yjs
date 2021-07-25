@@ -1,6 +1,6 @@
-import { appYDocAtom, useAppYDoc } from "@/store";
-import { AwarenessState, Game } from "@/types";
-import { makeGame, makePlayer, removeItemObjectMutate } from "@/utils";
+import { appYDocAtom, useAppYAwareness, useAppYAwarenessInit, useAppYDocInit, usePresence } from "@/store";
+import { Game, Player } from "@/types";
+import { makeGame, removeItemObjectMutate } from "@/utils";
 import { useYArray, useYDocValue } from "@/yjs-utils";
 import {
     Box,
@@ -12,24 +12,44 @@ import {
     Editable,
     EditableInput,
     EditablePreview,
+    EditableProps,
     Flex,
     SimpleGrid,
+    Spinner,
     Stack,
 } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
-import { useYAwareness } from "zustand-yjs";
 
 export const RPS = () => {
-    const yDoc = useAppYDoc();
+    const yDoc = useAppYDocInit();
+    useAppYAwarenessInit();
+
     const gamesSource = useYArray<Game>(yDoc, "games");
     const games = useSnapshot(gamesSource);
-    console.log(games);
-    const makeNewGame = () => gamesSource.push(makeGame());
+
+    const [presence, setPresence] = usePresence();
+
+    const makeNewGame = () => gamesSource.push(makeGame(presence));
+    const updateName = (username: Player["username"]) => setPresence((player) => ({ ...player, username }));
+
+    if (!presence) {
+        return (
+            <Center>
+                <Spinner />
+            </Center>
+        );
+    }
 
     return (
         <Stack w="100%">
             <Center flexDir="column" m="8">
-                <Button onClick={makeNewGame}>New game</Button>
+                <Stack h="100%">
+                    <Stack direction="row" alignItems="center">
+                        <chakra.span>Username: </chakra.span>
+                        <EditableName defaultValue={presence.username} onSubmit={updateName} />
+                    </Stack>
+                    <Button onClick={makeNewGame}>New game</Button>
+                </Stack>
             </Center>
             <SimpleGrid columns={[1, 1, 2, 3, 3, 4]} w="100%" spacing="8">
                 {games.map((game: Game, gameIndex) => {
@@ -43,35 +63,22 @@ export const RPS = () => {
     );
 };
 
-const usePresence = (yDoc) => {
-    const [awareness, setAwarenessData] = useYAwareness<AwarenessState>(yDoc);
-    // awareness.ge
-};
-
-const EditableName = ({ yDoc }) => {
-    const [awareness, setAwarenessData] = useYAwareness<AwarenessState>(yDoc);
-    const presence = usePresence(yDoc);
-    return (
-        <Editable defaultValue={""}>
-            <EditablePreview />
-            <EditableInput />
-        </Editable>
-    );
-};
-
 const DuelGameWidget = ({ game }) => {
     const gameSnap = useSnapshot<Game>(game);
     const [hostPlayer, opponentPlayer] = gameSnap.players || [];
-    console.log(gameSnap);
+    // console.log(gameSnap);
 
     const yDoc = useYDocValue(appYDocAtom);
     const gamesSource = useYArray<Game>(yDoc, "games");
     const deleteGame = () => removeItemObjectMutate(gamesSource, "id", game.id);
-    const joinGame = () => game.players.push(makePlayer());
+    const [presence] = usePresence();
+    const joinGame = () => game.players.push(presence);
+    const isHost = presence.id === hostPlayer.id;
+    console.log(isHost, hostPlayer, opponentPlayer);
 
     return (
         <Flex bgColor="gray.400" w="100%" h="200px" p="15px" rounded={8} pos="relative">
-            <CloseButton pos="absolute" bottom="100%" left="100%" bgColor="gray.100" onClick={deleteGame} />
+            {<CloseButton pos="absolute" bottom="100%" left="100%" bgColor="gray.100" onClick={deleteGame} />}
             <PlayerSlot>
                 <PlayerSlotContent player={hostPlayer} />
             </PlayerSlot>
@@ -81,6 +88,8 @@ const DuelGameWidget = ({ game }) => {
             <PlayerSlot>
                 {opponentPlayer ? (
                     <PlayerSlotContent player={opponentPlayer} />
+                ) : isHost ? (
+                    <PlayerSlotWaitingForOpponent />
                 ) : (
                     <PlayerSlotJoinGame onJoin={joinGame} />
                 )}
@@ -95,7 +104,7 @@ const PlayerSlot = ({ children }) => (
     </Box>
 );
 
-const PlayerSlotContent = ({ player }) => {
+const PlayerSlotContent = ({ player }: { player: Player }) => {
     return (
         <Stack justifyContent="center" alignItems="center" h="100%" spacing="1">
             <Circle size={"65px"} bgColor="gray.300" />
@@ -119,6 +128,17 @@ const PlayerSlotJoinGame = ({ onJoin }) => {
     );
 };
 
+const PlayerSlotWaitingForOpponent = () => {
+    return (
+        <Center h="100%">
+            <Button colorScheme="yellow" disabled h="50px" mx="4" fontSize="sm">
+                Waiting for
+                <br /> an opponent...
+            </Button>
+        </Center>
+    );
+};
+
 const VsCircle = () => (
     <Circle size={"40px"} bgColor="gray.300">
         <chakra.span textTransform="uppercase" color="gray.900" fontSize="small">
@@ -126,3 +146,12 @@ const VsCircle = () => (
         </chakra.span>
     </Circle>
 );
+
+const EditableName = (props: EditableProps) => {
+    return (
+        <Editable {...props} textTransform="uppercase">
+            <EditablePreview />
+            <EditableInput w="12ch" textTransform="uppercase" textAlign="center" />
+        </Editable>
+    );
+};

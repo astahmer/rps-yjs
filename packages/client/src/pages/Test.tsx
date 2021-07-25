@@ -1,4 +1,4 @@
-import { useAppYDoc } from "@/store";
+import { useAppYDocInit } from "@/store";
 import { Game } from "@/types";
 import { makeGame, makePlayer } from "@/utils";
 import { useYArray } from "@/yjs-utils";
@@ -6,10 +6,10 @@ import { Button, Center, chakra, SimpleGrid, Stack } from "@chakra-ui/react";
 import { useSnapshot } from "valtio";
 
 export const Test = () => {
-    const yDoc = useAppYDoc();
+    const yDoc = useAppYDocInit();
     const gamesSource = useYArray<Game>(yDoc, "games.test");
     const games = useSnapshot(gamesSource);
-    const pushTo = () => gamesSource.push(makeGame());
+    const pushTo = () => gamesSource.push(makeGame(makePlayer()));
 
     return (
         <Stack w="100%">

@@ -6,15 +6,15 @@ import { proxy } from "valtio";
 import { bindProxyAndYArray, bindProxyAndYMap } from "valtio-yjs";
 import * as Y from "yjs";
 
-export const useYDocProvider = (yDocAtom: Atom<Y.Doc>, onMount: (yDoc: Y.Doc) => (yDoc: Y.Doc) => void) => {
+export type UseYDocProviderUnmountFn = (yDoc: Y.Doc) => void;
+export type UseYDocProviderMountFn = (yDoc: Y.Doc) => UseYDocProviderUnmountFn;
+
+export const useYDocInit = (yDocAtom: Atom<Y.Doc>, onMount: UseYDocProviderMountFn) => {
     const yDoc = useAtomValue(yDocAtom);
 
     useEffect(() => {
         const unmount = onMount(yDoc);
-
-        return () => {
-            unmount(yDoc);
-        };
+        return () => unmount(yDoc);
     }, []);
 
     return yDoc;
