@@ -1,12 +1,13 @@
-import { useAppYDocInit } from "@/store";
+import { useYAwarenessInit, yDoc } from "@/store";
 import { Game } from "@/types";
 import { makeGame, makePlayer } from "@/utils";
-import { useYArray } from "@/yjs-utils";
 import { Button, Center, chakra, SimpleGrid, Stack } from "@chakra-ui/react";
+import { useYArray } from "jotai-yjs";
 import { useSnapshot } from "valtio";
 
 export const Test = () => {
-    const yDoc = useAppYDocInit();
+    useYAwarenessInit();
+
     const gamesSource = useYArray<Game>(yDoc, "games.test");
     const games = useSnapshot(gamesSource);
     const pushTo = () => gamesSource.push(makeGame(makePlayer()));

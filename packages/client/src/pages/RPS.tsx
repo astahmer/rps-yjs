@@ -1,7 +1,7 @@
-import { appYDocAtom, useAppYAwareness, useAppYAwarenessInit, useAppYDocInit, usePresence } from "@/store";
+import { yDoc, useProviderInit, usePresence, useYAwarenessInit, useYAwareness } from "@/store";
 import { Game, Player } from "@/types";
 import { getRandomColor, makeGame, getSaturedColor, throttle } from "@/utils";
-import { useYArray, useYDocValue } from "@/yjs-utils";
+import { useYArray } from "jotai-yjs";
 import {
     Box,
     Button,
@@ -22,8 +22,8 @@ import { removeItemMutate } from "@pastable/core";
 import { useSnapshot } from "valtio";
 
 export const RPS = () => {
-    const yDoc = useAppYDocInit();
-    useAppYAwarenessInit();
+    useProviderInit();
+    useYAwarenessInit();
 
     const gamesSource = useYArray<Game>(yDoc, "games");
     const games = useSnapshot(gamesSource);
@@ -49,7 +49,7 @@ export const RPS = () => {
             <Center flexDir="column" m="8">
                 <Stack h="100%">
                     <Stack direction="row" alignItems="center">
-                        <chakra.span>Username: </chakra.span>
+                        <chakra.span>(Editable) Username: </chakra.span>
                         <EditableName defaultValue={presence.username} onSubmit={updateName} />
                     </Stack>
                     <input type="color" onChange={handleUpdateColor} />
@@ -71,12 +71,13 @@ export const RPS = () => {
 };
 
 const PlayerList = () => {
-    const awareness = useAppYAwareness();
+    const awareness = useYAwareness();
+    const players = Array.from(awareness.entries()).filter(([_id, player]) => player.id);
 
     return (
         <Box pos="fixed" top="100px" right="0">
             <Stack>
-                {Array.from(awareness.entries()).map(([id, presence]) => (
+                {players.map(([id, presence]) => (
                     <Box key={id} py="2" px="4" w="150px" bgColor={presence.color} pos="relative">
                         <Box
                             pos="absolute"
@@ -98,14 +99,11 @@ const DuelGameWidget = ({ game }) => {
     const gameSnap = useSnapshot<Game>(game);
     const [hostPlayer, opponentPlayer] = gameSnap.players || [];
 
-    const yDoc = useYDocValue(appYDocAtom);
     const gamesSource = useYArray<Game>(yDoc, "games");
     const deleteGame = () => removeItemMutate(gamesSource, "id", game.id);
     const [presence] = usePresence();
     const joinGame = () => game.players.push(presence);
     const isHost = presence.id === hostPlayer.id;
-    const canStart = Boolean(hostPlayer && opponentPlayer);
-    // TODO rdy button for both ? or auto-start after x
 
     return (
         <Flex bgColor="gray.400" w="100%" h="200px" p="15px" rounded={8} pos="relative">

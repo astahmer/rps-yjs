@@ -1,4 +1,4 @@
-import { getNextIndex, getNextItem, getRandomIntIn, pickOne } from "@pastable/core";
+import { getNextIndex, getRandomIntIn, pickOne } from "@pastable/core";
 import { nanoid } from "nanoid";
 import { Game, Player } from "./types";
 
