@@ -1,7 +1,8 @@
-import { yDoc, useProviderInit, usePresence, useYAwarenessInit, useYAwareness } from "@/store";
+import { getStateValuePath, parseStateValue, useSharedMachine } from "@/lib";
+import { makeRPSMachine } from "@/machine";
+import { usePresence, useProviderInit, useYAwareness, useYAwarenessInit, yDoc } from "@/store";
 import { Game, Player } from "@/types";
-import { getRandomColor, makeGame, getSaturedColor, throttle } from "@/utils";
-import { useYArray } from "jotai-yjs";
+import { getRandomColor, getSaturedColor, makeGame, throttle } from "@/utils";
 import {
     Box,
     Button,
@@ -16,9 +17,12 @@ import {
     Flex,
     SimpleGrid,
     Spinner,
+    SquareProps,
     Stack,
 } from "@chakra-ui/react";
 import { removeItemMutate } from "@pastable/core";
+import { useYArray, useYMap } from "jotai-yjs";
+import { useMemo, useState } from "react";
 import { useSnapshot } from "valtio";
 
 export const RPS = () => {
@@ -95,14 +99,34 @@ const PlayerList = () => {
     );
 };
 
-const DuelGameWidget = ({ game }) => {
-    const gameSnap = useSnapshot<Game>(game);
+const DuelGameWidget = ({ game }: { game: Game }) => {
+    const gameSnap = useSnapshot(game);
     const [hostPlayer, opponentPlayer] = gameSnap.players || [];
 
-    const gamesSource = useYArray<Game>(yDoc, "games");
-    const deleteGame = () => removeItemMutate(gamesSource, "id", game.id);
+    const gameList = useYArray<Game>(yDoc, "games");
+    const deleteGame = () => removeItemMutate(gameList, "id", game.id);
     const [presence] = usePresence();
-    const joinGame = () => game.players.push(presence);
+
+    const [initialState] = useState(() => (game.state ? { state: parseStateValue(game.state) } : undefined));
+    const [state, send] = useSharedMachine(game, () => makeRPSMachine(yDoc.guid, game.id), initialState);
+
+    const joinGame = () => {
+        if (game.players.some((player) => player.id === presence.id)) return;
+        game.players.push(presence);
+        send({ type: "JOIN" });
+    };
+
+    const stateValue = useMemo(() => getStateValuePath(state), [state.value]);
+    console.log(`render game#${game.id} [${stateValue}]`, game);
+
+    const onVSClick = () => {
+        if (state.matches("ready")) {
+            return send("START");
+        }
+        if (state.matches("done")) {
+            return send("RESTART");
+        }
+    };
     const isHost = presence.id === hostPlayer.id;
 
     return (
@@ -111,8 +135,12 @@ const DuelGameWidget = ({ game }) => {
             <PlayerSlot>
                 <PlayerSlotContent player={hostPlayer} />
             </PlayerSlot>
-            <Center w="80px" flexShrink={0}>
-                <VsCircle />
+            <Center w="80px" flexShrink={0} flexDir="column">
+                <chakra.span color="white" zIndex="10">
+                    {game.id}
+                </chakra.span>
+                <span>{stateValue}</span>
+                <VsCircle onClick={onVSClick} cursor="pointer" />
             </Center>
             <PlayerSlot>
                 {opponentPlayer ? (
@@ -168,11 +196,13 @@ const PlayerSlotWaitingForOpponent = () => {
     );
 };
 
-const VsCircle = () => (
-    <Circle size={"40px"} bgColor="gray.300">
-        <chakra.span textTransform="uppercase" color="gray.900" fontSize="small">
-            VS
-        </chakra.span>
+const VsCircle = (props: SquareProps) => (
+    <Circle size={"40px"} bgColor="gray.300" {...props}>
+        {props.children || (
+            <chakra.span textTransform="uppercase" color="gray.900" fontSize="small">
+                VS
+            </chakra.span>
+        )}
     </Circle>
 );
 

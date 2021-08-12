@@ -8,4 +8,6 @@ export interface Game {
     id: string;
     players: Array<Player>;
     mode: "duel" | "free-for-all";
+    state?: string | undefined;
+    version?: number | undefined;
 }
